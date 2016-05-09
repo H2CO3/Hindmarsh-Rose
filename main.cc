@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 
 	Gtk::Window window;
 	window.set_title("Hindmarsh-Rose Neuron Model");
-	window.set_default_size(1280, 720);
+	window.set_default_size(1280, 768);
 
 	Gtk::Fixed view;
 	view.show();
@@ -150,6 +150,18 @@ int main(int argc, char *argv[])
 
 	// Enable drawing only X (aka first function aka membrane potential) by default
 	checkboxes[0].second->set_active(true);
+
+	// Should the X-Y phase space be plotted?
+	Gtk::CheckButton phase_space_checkbox("Draw X-Y Phase Space");
+	phase_space_checkbox.show();
+	phase_space_checkbox.set_size_request(50, 15);
+	view.put(phase_space_checkbox, 15, y);
+
+	phase_space_checkbox.signal_toggled().connect([&plot, &phase_space_checkbox] {
+		plot.set_plot_phase_space(phase_space_checkbox.get_active());
+	});
+
+	y += control_height;
 
 	plot.set_params(params);
 	plot.set_enabled_functions(enabled_fns);

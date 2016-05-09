@@ -32,7 +32,7 @@ LDFLAGS = -O3 \
 OBJECTS = main.o hr_function.o
 
 
-all: hr
+all: clean hr
 
 hr: $(OBJECTS)
 	$(LD) -o $@ $^ $(LDFLAGS)

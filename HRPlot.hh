@@ -30,6 +30,10 @@ private:
 	double t_max;
 	double px_per_time;
 
+	// true iff the X-Y phase space should be plotted;
+	// false iff X or Y or Z should be plotted against t.
+	bool plot_phase_space;
+
 	// Returns the maximum of X, Y or Z values (index: 0 => X, 1 => Y, 2 => Z).
 	double get_max_abs(unsigned index) const {
 		auto abs_max = *std::max_element(
@@ -41,20 +45,18 @@ private:
 	};
 
 	// This only considers enabled (visible) functions.
-	double get_ver_scale() const {
+	double get_scale(unsigned enabled_fns, double max_size) const {
 		std::array<double, 3> abs_max_3 { 0.0, 0.0, 0.0 };
 
 		for (unsigned i = 0; i < 3; i++) {
-			if (enabled_functions & (1 << i)) {
+			if (enabled_fns & (1 << i)) {
 				abs_max_3[i] = get_max_abs(i);
 			}
 		}
 
 		const double abs_max = *std::max_element(abs_max_3.begin(), abs_max_3.end());
 		const double padding = 10;
-		const double ver_scale = (ver_max - padding) / abs_max;
-
-		return ver_scale;
+		return (max_size - padding) / abs_max;
 	}
 
 	void draw_background(const Cairo::RefPtr<Cairo::Context> &ctx) {
@@ -91,6 +93,25 @@ private:
 
 			ctx->stroke();
 		}
+	}
+
+	// plot Y against X
+	void draw_xy_phase_space(const Cairo::RefPtr<Cairo::Context> &ctx) {
+		ctx->set_line_width(1);
+
+		auto x_scale = get_scale(FN_X, get_allocated_width() / 2);
+		auto y_scale = get_scale(FN_Y, ver_max);
+		auto x0 = get_allocated_width() / 2;
+		auto y0 = get_allocated_height() / 2;
+
+		ctx->set_source_rgb(0.9, 0.6, 0.3);
+		ctx->move_to(x0 + x[0][0] * x_scale, y0 + x[0][1] * y_scale);
+
+		for (std::size_t i = 1; i < t.size(); i++) {
+			ctx->line_to(x0 + x[i][0] * x_scale, y0 + x[i][1] * y_scale);
+		}
+
+		ctx->stroke();
 	}
 
 	void draw_axes(const Cairo::RefPtr<Cairo::Context> &ctx) {
@@ -155,7 +176,7 @@ public:
 		FN_Z = 1 << 2
 	};
 
-	HRPlot() : Gtk::DrawingArea(), params{}, enabled_functions(FN_X | FN_Y | FN_Z) {}
+	HRPlot() : Gtk::DrawingArea(), params{}, enabled_functions(FN_X | FN_Y | FN_Z), plot_phase_space(false) {}
 
 	void set_params(const HRParams &p_params) {
 		params = p_params;
@@ -167,11 +188,17 @@ public:
 		queue_draw();
 	}
 
+	void set_plot_phase_space(bool p_plot_phase_space) {
+		plot_phase_space = p_plot_phase_space;
+		queue_draw();
+	}
+
 protected:
 	virtual bool on_draw(const Cairo::RefPtr<Cairo::Context> &ctx) {
 		// Set initial conditions and drawing parameters
 		const auto x0 = std::array<double, 3> { params['x'], params['y'], params['z'] };
-		const double dt_max = 0.1;
+		// plotting the phase space requires higher precision for a good-quality image
+		const double dt_max = plot_phase_space ? 0.02 : 0.1;
 
 		t_max = params['t']; // get_allocated_width();
 		px_per_time = get_allocated_width() / t_max;
@@ -192,19 +219,25 @@ protected:
 
 		assert(t.size() == x.size() && "# of time and x coordinates does not match");
 
-		// Set Y scale so that the maximal value can be fully drawn.
+		// Set vertical scale so that the maximal value can be fully drawn.
 		// Leave a little padding too.
 		// This only considers the enabled (visible) functions.
-		ver_scale = get_ver_scale();
+		ver_scale = get_scale(enabled_functions, ver_max);
 
 		// draw frame with black background
 		draw_background(ctx);
 
 		// draw functions
-		draw_functions(ctx);
+		if (plot_phase_space) {
+			draw_xy_phase_space(ctx);
+		} else {
+			draw_functions(ctx);
+		}
 
 		// draw axes and divisions in white color
-		draw_axes(ctx);
+		if (not plot_phase_space) {
+			draw_axes(ctx);
+		}
 
 		return true;
 	}
