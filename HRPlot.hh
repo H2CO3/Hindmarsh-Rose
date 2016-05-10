@@ -154,7 +154,7 @@ private:
 			auto y_max = ver_max / ver_scale;
 
 			char label[32];
-			std::snprintf(label, sizeof label, "%.2f", 2 * y_max / num_ver_divs * (i - num_ver_divs / 2));
+			std::snprintf(label, sizeof label, "%.2f", 2 * y_max / num_ver_divs * (num_ver_divs / 2 - i));
 
 			Cairo::TextExtents ext;
 			ctx->get_text_extents(label, ext);
